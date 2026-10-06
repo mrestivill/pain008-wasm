@@ -65,3 +65,8 @@ El botó **Download Q1X** no transforma l'XML: descarrega exactament el mateix `
 - Pain001: https://github.com/sebastienrousseau/pain001
 - PyPI: https://pypi.org/project/pain001/
 - Pyodide: https://pyodide.org/
+
+
+## Pyodide
+
+The site uses the current Pyodide 0.314.0.7 browser distribution (`pyodide.js`) and the documented `loadPyodide()` API. The JavaScript bridge passes JSON into Python with `pyodide.globals.set()` and executes the Python entry point with `runPythonAsync()`, rather than calling a Python `PyProxy` as a JavaScript function.
