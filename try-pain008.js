@@ -22,7 +22,7 @@ DD-10003,19.95,EUR,MANDATE-1003,OOFF,2026-10-15,Demo Customer,ES9121000418450200
   async function pyCall(fn,obj){
     if(!pyodide) throw new Error('Python WASM encara no està carregat.');
     pyodide.globals.set('payload_json', JSON.stringify(obj));
-    const result = await pyodide.runPythonAsync(`${fn}(payload_json)`);
+    const result = await pyodide.runPythonAsync(`import pain008\npain008.${fn}(payload_json)`);
     return JSON.parse(String(result));
   }
   async function validate(){try{els.csvError.hidden=true;const rows=parseCSV(els.csv.value);localSummary(rows);const data=await pyCall('validate',payload());render(data);return data}catch(e){showError(e);return null}}
