@@ -4,8 +4,8 @@
 DD-10001,49.90,EUR,MANDATE-1001,FRST,2026-10-15,Acme Customer,DE89370400440532013000,COBADEFFXXX,Invoice 10001
 DD-10002,125.00,EUR,MANDATE-1002,RCUR,2026-10-15,Example Customer,FR1420041010050500013M02606,BNPAFRPPXXX,Invoice 10002
 DD-10003,19.95,EUR,MANDATE-1003,OOFF,2026-10-15,Demo Customer,ES9121000418450200051332,CAIXESBBXXX,Invoice 10003`;
-  const PYODIDE_VERSION = "v314.0.7";
-  const PYODIDE_INDEX = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
+  const PYODIDE_VERSION = "0.314.0.7";
+  const PYODIDE_INDEX = `https://cdn.jsdelivr.net/pyodide/v314.0.7/full/`;
   const ids = {csv:"csvInput",file:"csvFile",sample:"sampleBtn",validate:"validateBtn",generate:"generateBtn",copy:"copyBtn",download:"downloadBtn",downloadQ1x:"downloadQ1xBtn",status:"status",summary:"summary",findings:"findings",xml:"xmlOutput",csvError:"csvError",creditorName:"creditorName",creditorIban:"creditorIban",creditorBic:"creditorBic",creditorScheme:"creditorScheme",collectionDate:"collectionDate",initiatorName:"initiatorName",engineBadge:"engineBadge"};
   const els = Object.fromEntries(Object.entries(ids).map(([k,v]) => [k, document.getElementById(v)]));
   let pyodide = null, lastXml = "";
@@ -21,14 +21,14 @@ DD-10003,19.95,EUR,MANDATE-1003,OOFF,2026-10-15,Demo Customer,ES9121000418450200
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   async function pyCall(fn,obj){
     if(!pyodide) throw new Error('Python WASM encara no està carregat.');
-    pyodide.globals.set('js_payload', JSON.stringify(obj));
-    const result = await pyodide.runPythonAsync(`__import__('${fn}', fromlist=['${fn}']).${fn}(js_payload)`);
+    pyodide.globals.set('payload_json', JSON.stringify(obj));
+    const result = await pyodide.runPythonAsync(`${fn}(payload_json)`);
     return JSON.parse(String(result));
   }
   async function validate(){try{els.csvError.hidden=true;const rows=parseCSV(els.csv.value);localSummary(rows);const data=await pyCall('validate',payload());render(data);return data}catch(e){showError(e);return null}}
   async function generate(){const checked=await validate();if(!checked?.is_valid)return;try{els.generate.disabled=true;els.generate.textContent='Generating…';const data=await pyCall('generate',payload());if(!data.success)throw new Error((data.violations||[]).map(v=>v.message||v).join('; ')||'pain001 no ha generat XML.');lastXml=data.xml;els.xml.textContent=lastXml;els.copy.disabled=els.download.disabled=els.downloadQ1x.disabled=false}catch(e){showError(e)}finally{els.generate.textContent='Generate XML';els.generate.disabled=false}}
   function download(name){if(!lastXml)return;const blob=new Blob([lastXml],{type:'application/xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
   els.sample.onclick=()=>{els.csv.value=SAMPLE;validate()};els.validate.onclick=validate;els.generate.onclick=generate;els.file.onchange=async()=>{const f=els.file.files[0];if(f){els.csv.value=await f.text();validate()}};els.copy.onclick=async()=>{await navigator.clipboard.writeText(lastXml);els.copy.textContent='Copied ✓';setTimeout(()=>els.copy.textContent='Copy',1200)};els.download.onclick=()=>download('pain.008.001.08.xml');els.downloadQ1x.onclick=()=>download('pain.008.001.08.Q1X');
-  async function boot(){try{els.status.textContent='Loading Python WASM…';pyodide=await globalThis.loadPyodide({indexURL:PYODIDE_INDEX});els.xml.textContent='Instal·lant pain001…';await pyodide.loadPackage('micropip');const micropip=pyodide.pyimport('micropip');await micropip.install('pain001==0.0.72');pyodide.FS.writeFile('/home/pyodide/pain008.py',await (await fetch('python/pain008.py')).text());await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import pain008");els.engineBadge.textContent='Python WASM · pain001';els.status.textContent='Ready';els.status.className='status good';els.validate.disabled=false;els.generate.disabled=false;els.xml.textContent='Validate your records, then generate the XML.';await validate()}catch(e){showError(e);els.engineBadge.textContent='Python WASM · error';els.xml.textContent='No s’ha pogut carregar Python/pain001. Revisa la consola del navegador.'}}
+  async function boot(){try{els.status.textContent='Loading Python…';const mod=await import('https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs');pyodide=await mod.loadPyodide({indexURL:PYODIDE_INDEX, args:[]});els.xml.textContent='Instal·lant pain001…';await pyodide.loadPackage('micropip');const micropip=pyodide.pyimport('micropip');await micropip.install('pain001==0.0.72');pyodide.FS.writeFile('/home/pyodide/pain008.py',await (await fetch('python/pain008.py')).text());await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import pain008");els.engineBadge.textContent=`Python WASM ${PYODIDE_VERSION} · pain001 ${'0.0.72'} · single-thread`;els.status.textContent='Ready · single-thread';els.status.className='status good';els.validate.disabled=false;els.generate.disabled=false;els.xml.textContent='Validate your records, then generate the XML.';await validate()}catch(e){showError(e);els.engineBadge.textContent='Python WASM · error';els.xml.textContent='No s’ha pogut carregar Python/pain001. Revisa la consola del navegador.'}}
   els.csv.value=SAMPLE;boot();
 })();

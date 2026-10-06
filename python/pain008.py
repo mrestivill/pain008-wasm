@@ -78,7 +78,7 @@ def _validation_json(result):
 def validate(payload_json):
     payload = json.loads(payload_json)
     rows = _rows_from_payload(payload)
-    result = validate_scheme(rows, profile="sepa-sdd")
+    result = validate_scheme(rows, profile="sepa-sdd", message_type=MESSAGE_TYPE)
     violations = _validation_json(result)
     has_sequence_column = any("sequence_type" in r for r in payload.get("rows", []))
     return json.dumps({
@@ -92,7 +92,7 @@ def validate(payload_json):
 def generate(payload_json):
     payload = json.loads(payload_json)
     rows = _rows_from_payload(payload)
-    result = validate_scheme(rows, profile="sepa-sdd")
+    result = validate_scheme(rows, profile="sepa-sdd", message_type=MESSAGE_TYPE)
     violations = _validation_json(result)
     if not getattr(result, "is_valid", False):
         return json.dumps({"success": False, "violations": violations})

@@ -67,6 +67,10 @@ El botó **Download Q1X** no transforma l'XML: descarrega exactament el mateix `
 - Pyodide: https://pyodide.org/
 
 
-## Pyodide
+## V4 runtime
 
-The site uses the current Pyodide 0.314.0.7 browser distribution (`pyodide.js`) and the documented `loadPyodide()` API. The JavaScript bridge passes JSON into Python with `pyodide.globals.set()` and executes the Python entry point with `runPythonAsync()`, rather than calling a Python `PyProxy` as a JavaScript function.
+This build is pinned to Pyodide **0.314.0.7** and `pain001==0.0.72`. Python runs on the browser main thread; the application does not create Web Workers, call `setInterruptBuffer()`, enable pthreads, or use `SharedArrayBuffer` directly. Pyodide itself may report a browser console warning related to SAB during WASM runtime initialization; that warning is from the runtime and is not an application-level SAB API call.
+
+The JavaScript/Python bridge uses `pyodide.runPythonAsync()` plus `pyodide.globals.set()` and does not call Python functions through `pyodide.globals.get(...)`.
+
+Pyodide is loaded from the versioned CDN URL documented for 0.314.0.7. `pain001` is installed in-browser with `micropip` and generates/validates `pain.008.001.08` using its bundled template/XSD and `sepa-sdd` validation.
