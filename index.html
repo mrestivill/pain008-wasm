@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="description" content="Generador i validador pain.008.001.08 que funciona íntegrament al navegador amb Python via Pyodide i pain001.">
+  <title>pain.008 Generator & Validator</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.mjs"></script>
+</head>
+<body>
+  <header class="site-header"><div class="wrap nav">
+    <div class="brand"><div class="logo">P8</div><div><strong>pain.008</strong><span>ISO 20022 Direct Debit</span></div></div>
+    <span id="engineBadge" class="badge">Python WASM · loading…</span>
+  </div></header>
+
+  <main class="wrap">
+    <section class="hero">
+      <p class="eyebrow">Interactive demo</p>
+      <h1>pain.008 Generator and Validator</h1>
+      <p class="lead">CSV → Python WASM → <code>pain001</code> → pain.008.001.08. Les dades es processen al navegador; no cal cap backend.</p>
+      <div class="notice"><strong>Arquitectura:</strong> GitHub Pages serveix els fitxers i Pyodide executa Python al navegador. <code>pain001</code> valida el perfil SEPA SDD i genera XML validat contra l'XSD.</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>1. Payment records</h2><p>CSV de cobrament SEPA Direct Debit.</p></div><div class="actions">
+        <label class="button secondary" for="csvFile">Load CSV</label><input id="csvFile" type="file" accept=".csv,text/csv" hidden>
+        <button id="sampleBtn" class="button secondary">Use sample</button><button id="validateBtn" class="button primary" disabled>Validate</button>
+      </div></div>
+      <div class="error-box" id="csvError" hidden></div>
+      <textarea id="csvInput" spellcheck="false" aria-label="CSV payment records"></textarea>
+      <div class="csv-help">Columnes principals: <code>payment_id</code>, <code>amount</code>, <code>currency</code>, <code>mandate_id</code>, <code>collection_date</code>, <code>debtor_name</code>, <code>debtor_iban</code>. <code>sequence_type</code> és opcional: si falta o és buida, s'utilitza <strong>OOFF</strong>.</div>
+    </section>
+
+    <section class="panel config">
+      <div class="panel-head compact"><div><h2>2. Creditor configuration</h2><p>Aquests valors poden anar al CSV o definir-se aquí com a valors per defecte.</p></div></div>
+      <div class="form-grid">
+        <label>Creditor name<input id="creditorName" value="Example Creditor"></label>
+        <label>Creditor IBAN<input id="creditorIban" value="ES5030250001131433318691"></label>
+        <label>Creditor BIC <small>(opcional)</small><input id="creditorBic" value=""></label>
+        <label>Creditor scheme ID (ICS)<input id="creditorScheme" value="ES98000B123456"></label>
+        <label>Collection date<input id="collectionDate" type="date" value="2026-10-15"></label>
+        <label>Initiator name<input id="initiatorName" value="Example Creditor"></label>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel"><div class="panel-head compact"><div><h2>3. Validation</h2><p>SEPA SDD + validació XSD de <code>pain001</code>.</p></div><span id="status" class="status neutral">Loading Python…</span></div><div id="summary" class="summary"></div><div id="findings" class="findings"></div></div>
+      <div class="panel"><div class="panel-head compact"><div><h2>4. Generate XML</h2><p>Message type: <code>pain.008.001.08</code> · engine: <code>pain001</code></p></div><button id="generateBtn" class="button primary" disabled>Generate XML</button></div>
+        <div class="xml-actions"><button id="copyBtn" class="button secondary" disabled>Copy</button><button id="downloadBtn" class="button secondary" disabled>Download XML</button><button id="downloadQ1xBtn" class="button secondary" disabled>Download Q1X</button></div>
+        <pre id="xmlOutput" class="xml-output"><code>Inicialitzant Python WASM…</code></pre>
+      </div>
+    </section>
+
+    <section class="panel details"><h2>Sequence type</h2><div class="checks">
+      <div><b>FRST</b><span>First — primer cobrament d’un mandat recurrent.</span></div><div><b>RCUR</b><span>Recurring — cobrament recurrent.</span></div><div><b>OOFF</b><span>One-off — cobrament únic.</span></div><div><b>FNAL</b><span>Final — últim cobrament d’un mandat recurrent.</span></div>
+    </div><p class="muted">Si el CSV no porta <code>sequence_type</code>, totes les files reben <strong>OOFF</strong>. Si una fila té el camp buit, també.</p></section>
+  </main>
+  <footer class="footer"><div class="wrap">GitHub Pages · Pyodide · Python · pain001 · pain.008.001.08</div></footer>
+  <script src="try-pain008.js"></script>
+</body>
+</html>
