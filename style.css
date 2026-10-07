@@ -113,7 +113,19 @@ code { color: #a8d8ff; font-family: ui-monospace, SFMono-Regular, Menlo, Consola
   gap: 6px;
   min-width: 0;
   color: var(--text);
-  font-weight: 600;
+  font-weight: 400;
+}
+
+.form-grid label > span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.form-grid small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
 }
 
 .form-grid input {
@@ -125,6 +137,7 @@ code { color: #a8d8ff; font-family: ui-monospace, SFMono-Regular, Menlo, Consola
   background: var(--panel-2);
   color: var(--text);
   font: inherit;
+  font-weight: 400;
   outline: none;
 }
 
@@ -133,24 +146,6 @@ code { color: #a8d8ff; font-family: ui-monospace, SFMono-Regular, Menlo, Consola
   box-shadow: 0 0 0 2px rgba(77, 181, 255, .12);
 }
 
-.form-grid small {
-  color: var(--muted);
-  font-weight: 400;
-}
 .form-grid input[type="date"] {
-  width: 100%;
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel-2);
-  color: var(--text);
-  font: inherit;
-  outline: none;
   cursor: pointer;
-}
-
-.form-grid input[type="date"]:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(77, 181, 255, .12);
 }
