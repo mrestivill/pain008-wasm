@@ -44,3 +44,11 @@ For pain.008.001.08 SEPA Direct Debit generation, each transaction must provide 
 La pàgina no executa la validació automàticament en obrir-se, carregar un CSV, usar el sample ni modificar camps. Cal prémer **Validate** per executar `pain001` i la validació SEPA/XSD. Si després de validar es modifica qualsevol dada, la validació anterior queda invalidada i cal tornar a prémer **Validate** abans de generar l'XML.
 
 Els camps opcionals buits, com els BIC, s'ometen del payload enviat a `pain001`; no s'envia `None` com a valor.
+
+
+## V4.8
+
+- El CSV d’exemple genera `mandate_signed_on` amb la data actual del navegador en format `YYYY-MM-DD`.
+- `collection_date` i `mandate_signed_on` es normalitzen abans de passar les dades a `pain001`.
+- S’accepten `YYYY-MM-DD`, `DD/MM/YYYY`, `DD-MM-YYYY`, `YYYY/MM/DD` i datetimes ISO; la sortida sempre és `YYYY-MM-DD`.
+- Si una data no és interpretable, la generació retorna un error clar en lloc d’enviar una cadena buida a l’XSD.

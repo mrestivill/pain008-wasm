@@ -1,9 +1,12 @@
 (() => {
   "use strict";
-  const SAMPLE = `payment_id,amount,currency,mandate_id,mandate_signed_on,sequence_type,collection_date,debtor_name,debtor_iban,debtor_bic,remittance
-DD-10001,49.90,EUR,MANDATE-1001,2026-08-31,FRST,2026-10-15,Acme Customer,DE89370400440532013000,COBADEFFXXX,Invoice 10001
-DD-10002,125.00,EUR,MANDATE-1002,2026-08-31,RCUR,2026-10-15,Example Customer,FR1420041010050500013M02606,BNPAFRPPXXX,Invoice 10002
-DD-10003,19.95,EUR,MANDATE-1003,2026-08-31,OOFF,2026-10-15,Demo Customer,ES9121000418450200051332,CAIXESBBXXX,Invoice 10003`;
+  const SAMPLE = (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return `payment_id,amount,currency,mandate_id,mandate_signed_on,sequence_type,collection_date,debtor_name,debtor_iban,debtor_bic,remittance
+DD-10001,49.90,EUR,MANDATE-1001,${today},FRST,2026-10-15,Acme Customer,DE89370400440532013000,COBADEFFXXX,Invoice 10001
+DD-10002,125.00,EUR,MANDATE-1002,${today},RCUR,2026-10-15,Example Customer,FR1420041010050500013M02606,BNPAFRPPXXX,Invoice 10002
+DD-10003,19.95,EUR,MANDATE-1003,${today},OOFF,2026-10-15,Demo Customer,ES9121000418450200051332,CAIXESBBXXX,Invoice 10003`;
+  })();
   const PYODIDE_VERSION = "0.314.0.7";
   const PYODIDE_INDEX = `https://cdn.jsdelivr.net/pyodide/v314.0.7/full/`;
   const ids = {csv:"csvInput",file:"csvFile",sample:"sampleBtn",validate:"validateBtn",generate:"generateBtn",copy:"copyBtn",download:"downloadBtn",downloadQ1x:"downloadQ1xBtn",generateFindings:"generateFindings",status:"status",summary:"summary",findings:"findings",xml:"xmlOutput",csvError:"csvError",creditorName:"creditorName",creditorIban:"creditorIban",creditorBic:"creditorBic",creditorScheme:"creditorScheme",collectionDate:"collectionDate",initiatorName:"initiatorName",engineBadge:"engineBadge"};
