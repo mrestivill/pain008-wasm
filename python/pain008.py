@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 from pain001 import generate_xml_string, validate_scheme
 from pain001.constants import TEMPLATES_DIR
+from pain001.templates import DEFAULT_TEMPLATE_REGISTRY
 
 MESSAGE_TYPE = "pain.008.001.08"
 
@@ -143,22 +144,38 @@ def validate(payload_json):
 def generate(payload_json):
     payload = json.loads(payload_json)
     rows = _rows_from_payload(payload)
-    result = validate_scheme(_rows_for_scheme_validation(rows), profile="sepa-sdd", message_type=MESSAGE_TYPE)
-    violations = _validation_json(result)
-    violations.extend(_generation_violations(rows))
+    result = None
+    try:
+        result = validate_scheme(_rows_for_scheme_validation(rows), profile="sepa-sdd", message_type=MESSAGE_TYPE)
+        violations = _validation_json(result)
+        violations.extend(_generation_violations(rows))
+    except Exception as e:
+        violations = str(e)
     if not getattr(result, "is_valid", False) or violations:
         return json.dumps({"success": False, "violations": violations})
 
-    bundle = TEMPLATES_DIR / MESSAGE_TYPE
-    xml = generate_xml_string(
-        rows,
-        MESSAGE_TYPE,
-        str(bundle / "template.xml"),
-        str(bundle / f"{MESSAGE_TYPE}.xsd"),
-    )
-    return json.dumps({
-        "success": True,
-        "message_type": MESSAGE_TYPE,
-        "xml": xml,
-        "rows": len(rows),
-    })
+    template = DEFAULT_TEMPLATE_REGISTRY.get_template(MESSAGE_TYPE)
+    if template is None:
+        raise RuntimeError (f"La versió {MESSAGE_TYPE} no està registrada.")
+    xml = None
+    try:
+        xml = generate_xml_string(
+            data=rows,
+            payment_initiation_message_type=MESSAGE_TYPE,
+            xml_template_path=template.template_path,
+            xsd_schema_path=template.xsd_path,
+        )
+        return json.dumps({
+            "success": True,
+            "message_type": MESSAGE_TYPE,
+            "xml": xml,
+            "rows": len(rows),
+        })
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "message_type": MESSAGE_TYPE,
+            "xml": str(e),
+            "rows": len(rows),
+        })
+
