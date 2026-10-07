@@ -15,6 +15,25 @@ def _optional(value):
     return value if value else None
 
 
+# pain001 0.0.72 can run the SEPA-SDD scheme BIC check even when an optional
+# BIC key is absent, in which case the internal check may receive None.  The
+# XML/XSD allows the agent BIC element to be omitted, so for scheme validation
+# only we use a valid-format internal sentinel. The real row never contains
+# this value and generation still omits an empty BIC.
+_VALIDATION_BIC_SENTINEL = "BANKESMMXXX"
+
+def _rows_for_scheme_validation(rows):
+    checked = []
+    for row in rows:
+        item = dict(row)
+        if not _s(item.get("creditor_agent_BIC")):
+            item["creditor_agent_BIC"] = _VALIDATION_BIC_SENTINEL
+        if not _s(item.get("debtor_agent_BIC")):
+            item["debtor_agent_BIC"] = _VALIDATION_BIC_SENTINEL
+        checked.append(item)
+    return checked
+
+
 def _rows_from_payload(payload):
     raw_rows = payload.get("rows", [])
     cfg = payload.get("config", {})
@@ -109,7 +128,7 @@ def _validation_json(result):
 def validate(payload_json):
     payload = json.loads(payload_json)
     rows = _rows_from_payload(payload)
-    result = validate_scheme(rows, profile="sepa-sdd", message_type=MESSAGE_TYPE)
+    result = validate_scheme(_rows_for_scheme_validation(rows), profile="sepa-sdd", message_type=MESSAGE_TYPE)
     violations = _validation_json(result)
     violations.extend(_generation_violations(rows))
     has_sequence_column = any("sequence_type" in r for r in payload.get("rows", []))
@@ -124,7 +143,7 @@ def validate(payload_json):
 def generate(payload_json):
     payload = json.loads(payload_json)
     rows = _rows_from_payload(payload)
-    result = validate_scheme(rows, profile="sepa-sdd", message_type=MESSAGE_TYPE)
+    result = validate_scheme(_rows_for_scheme_validation(rows), profile="sepa-sdd", message_type=MESSAGE_TYPE)
     violations = _validation_json(result)
     violations.extend(_generation_violations(rows))
     if not getattr(result, "is_valid", False) or violations:

@@ -1,3 +1,15 @@
+# pain.008 GitHub Pages — V4.5
+
+V4.5 fixes optional BIC handling and makes validation strictly manual.
+
+- Empty creditor/debtor BICs are omitted from generated XML.
+- SEPA-SDD scheme validation uses an internal valid-format sentinel only when a BIC is absent, preventing `None` from being validated as a BIC. The sentinel is never written to XML.
+- The page starts in `Not validated` state.
+- Loading sample/CSV or editing any field does not execute validation.
+- The `Validate` button is the only action that runs `pain001.validate_scheme`.
+- XML generation remains disabled until the current data has been successfully validated.
+- `try-pain008.js?v=45` cache-busts the browser/GitHub Pages copy of the JavaScript.
+
 # pain.008 GitHub Pages — Pyodide + pain001 v4.2
 
 100% client-side SEPA Direct Debit generator.
