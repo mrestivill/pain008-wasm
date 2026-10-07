@@ -6,7 +6,7 @@ DD-10002,125.00,EUR,MANDATE-1002,2026-08-31,RCUR,2026-10-15,Example Customer,FR1
 DD-10003,19.95,EUR,MANDATE-1003,2026-08-31,OOFF,2026-10-15,Demo Customer,ES9121000418450200051332,CAIXESBBXXX,Invoice 10003`;
   const PYODIDE_VERSION = "0.314.0.7";
   const PYODIDE_INDEX = `https://cdn.jsdelivr.net/pyodide/v314.0.7/full/`;
-  const ids = {csv:"csvInput",file:"csvFile",sample:"sampleBtn",validate:"validateBtn",generate:"generateBtn",copy:"copyBtn",download:"downloadBtn",downloadQ1x:"downloadQ1xBtn",status:"status",summary:"summary",findings:"findings",xml:"xmlOutput",csvError:"csvError",creditorName:"creditorName",creditorIban:"creditorIban",creditorBic:"creditorBic",creditorScheme:"creditorScheme",collectionDate:"collectionDate",initiatorName:"initiatorName",engineBadge:"engineBadge"};
+  const ids = {csv:"csvInput",file:"csvFile",sample:"sampleBtn",validate:"validateBtn",generate:"generateBtn",copy:"copyBtn",download:"downloadBtn",downloadQ1x:"downloadQ1xBtn",generateFindings:"generateFindings",status:"status",summary:"summary",findings:"findings",xml:"xmlOutput",csvError:"csvError",creditorName:"creditorName",creditorIban:"creditorIban",creditorBic:"creditorBic",creditorScheme:"creditorScheme",collectionDate:"collectionDate",initiatorName:"initiatorName",engineBadge:"engineBadge"};
   const els = Object.fromEntries(Object.entries(ids).map(([k,v]) => [k, document.getElementById(v)]));
   let pyodide = null, lastXml = "", lastValidationPayload = null;
 
@@ -20,12 +20,12 @@ DD-10003,19.95,EUR,MANDATE-1003,2026-08-31,OOFF,2026-10-15,Demo Customer,ES91210
   function invalidateValidation(message="Not validated") {
     lastValidationPayload = null;
     lastXml = "";
-    els.generate.disabled = true;
     els.copy.disabled = els.download.disabled = els.downloadQ1x.disabled = true;
     els.status.textContent = message;
     els.status.className = "status neutral";
     els.findings.innerHTML = `<div class="finding">${escapeHtml(message)}</div>`;
-    els.xml.textContent = "Validation required before XML generation.";
+    els.generateFindings.innerHTML = `<div class="finding">${escapeHtml(message)}</div>`;
+    els.xml.textContent = "Click Validate or Generate XML to run validation.";
   }
   function render(data){
     const violations=data.violations||[];
@@ -61,20 +61,44 @@ DD-10003,19.95,EUR,MANDATE-1003,2026-08-31,OOFF,2026-10-15,Demo Customer,ES91210
       return data;
     }catch(e){showError(e);return null;}
   }
+  function renderGenerateErrors(violations){
+    const list = violations || [];
+    els.generateFindings.innerHTML = list.length
+      ? list.map(v=>`<div class="finding">${escapeHtml(typeof v==='string'?v:(v.message||JSON.stringify(v)))}</div>`).join('')
+      : '<div class="finding ok">✓ Validació correcta. XML generat.</div>';
+  }
   async function generate(){
     const current=payload();
-    if(!lastValidationPayload||lastValidationPayload!==JSON.stringify(current)){invalidateValidation('Changes pending validation. Click Validate first.');return;}
+    els.csvError.hidden=true;
+    els.generate.disabled=true;
+    els.generate.textContent='Validating & generating…';
+    els.generateFindings.innerHTML='<div class="finding">Validant i generant XML…</div>';
+    lastXml='';
+    els.copy.disabled=els.download.disabled=els.downloadQ1x.disabled=true;
     try{
-      els.generate.disabled=true;
-      els.generate.textContent='Generating…';
       const data=await pyCall('generate',current);
-      if(!data.success) throw new Error((data.violations||[]).map(v=>v.message||v).join('; ')||'pain001 no ha generat XML.');
+      if(!data.success){
+        renderGenerateErrors(data.violations||['pain001 no ha generat XML.']);
+        els.status.textContent='Invalid';
+        els.status.className='status bad';
+        els.xml.textContent='XML no generat: hi ha errors de validació.';
+        return;
+      }
+      renderGenerateErrors([]);
       lastXml=data.xml;
       els.xml.textContent=lastXml;
       els.copy.disabled=els.download.disabled=els.downloadQ1x.disabled=false;
-    }catch(e){showError(e)}finally{
+      lastValidationPayload=JSON.stringify(current);
+      els.status.textContent='Valid';
+      els.status.className='status good';
+    }catch(e){
+      renderGenerateErrors([e?.message||String(e)]);
+      els.status.textContent='Error';
+      els.status.className='status bad';
+      els.xml.textContent='XML no generat.';
+    }finally{
       els.generate.textContent='Generate XML';
-      els.generate.disabled=!lastXml;
+      els.generate.disabled=false;
     }
   }
   function download(name){if(!lastXml)return;const blob=new Blob([lastXml],{type:'application/xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
@@ -84,6 +108,6 @@ DD-10003,19.95,EUR,MANDATE-1003,2026-08-31,OOFF,2026-10-15,Demo Customer,ES91210
   els.file.onchange=async()=>{const f=els.file.files[0];if(f){els.csv.value=await f.text();localSummary(parseCSV(els.csv.value));invalidateValidation('CSV loaded · click Validate.');}};
   [els.csv,els.creditorName,els.creditorIban,els.creditorBic,els.creditorScheme,els.collectionDate,els.initiatorName].forEach(el=>el.addEventListener('input',()=>invalidateValidation('Changes pending validation · click Validate.')));
   els.copy.onclick=async()=>{await navigator.clipboard.writeText(lastXml);els.copy.textContent='Copied ✓';setTimeout(()=>els.copy.textContent='Copy',1200)};els.download.onclick=()=>download('pain.008.001.08.xml');els.downloadQ1x.onclick=()=>download('pain.008.001.08.Q1X');
-  async function boot(){try{els.status.textContent='Loading Python…';const mod=await import('https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs');pyodide=await mod.loadPyodide({indexURL:PYODIDE_INDEX, args:[]});els.xml.textContent='Instal·lant pain001…';await pyodide.loadPackage('micropip');const micropip=pyodide.pyimport('micropip');await micropip.install('pain001==0.0.72');pyodide.FS.writeFile('/home/pyodide/pain008.py',await (await fetch('python/pain008.py')).text());await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import pain008");els.engineBadge.textContent=`Python WASM ${PYODIDE_VERSION} · pain001 ${'0.0.72'} · single-thread`;els.status.textContent='Ready · not validated';els.status.className='status neutral';els.validate.disabled=false;els.generate.disabled=true;els.xml.textContent='Click Validate to run pain001 validation.';localSummary(parseCSV(els.csv.value));invalidateValidation('Ready · click Validate to validate.');}catch(e){showError(e);els.engineBadge.textContent='Python WASM · error';els.xml.textContent='No s’ha pogut carregar Python/pain001. Revisa la consola del navegador.'}}
+  async function boot(){try{els.status.textContent='Loading Python…';const mod=await import('https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs');pyodide=await mod.loadPyodide({indexURL:PYODIDE_INDEX, args:[]});els.xml.textContent='Instal·lant pain001…';await pyodide.loadPackage('micropip');const micropip=pyodide.pyimport('micropip');await micropip.install('pain001==0.0.72');pyodide.FS.writeFile('/home/pyodide/pain008.py',await (await fetch('python/pain008.py')).text());await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import pain008");els.engineBadge.textContent=`Python WASM ${PYODIDE_VERSION} · pain001 ${'0.0.72'} · single-thread`;els.status.textContent='Ready · not validated';els.status.className='status neutral';els.validate.disabled=false;els.generate.disabled=false;els.xml.textContent='Click Validate or Generate XML to run validation.';localSummary(parseCSV(els.csv.value));invalidateValidation('Ready · click Validate to validate, or Generate XML to validate and generate.');}catch(e){showError(e);els.engineBadge.textContent='Python WASM · error';els.xml.textContent='No s’ha pogut carregar Python/pain001. Revisa la consola del navegador.'}}
   els.csv.value=SAMPLE;boot();
 })();

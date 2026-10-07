@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timezone
 from pain001 import generate_xml_string, validate_scheme
-from pain001.constants import TEMPLATES_DIR
 from pain001.templates import DEFAULT_TEMPLATE_REGISTRY
 
 MESSAGE_TYPE = "pain.008.001.08"
@@ -17,11 +16,12 @@ def _optional(value):
 
 
 # pain001 0.0.72 can run the SEPA-SDD scheme BIC check even when an optional
-# BIC key is absent, in which case the internal check may receive None.  The
+# BIC key is absent, in which case the internal check may receive None. The
 # XML/XSD allows the agent BIC element to be omitted, so for scheme validation
 # only we use a valid-format internal sentinel. The real row never contains
 # this value and generation still omits an empty BIC.
 _VALIDATION_BIC_SENTINEL = "BANKESMMXXX"
+
 
 def _rows_for_scheme_validation(rows):
     checked = []
@@ -84,8 +84,7 @@ def _rows_from_payload(payload):
             "sequence_type": sequence_type,
             "charge_bearer": "SLEV",
         }
-        # Optional XML fields must be omitted when empty. Passing None makes
-        # pain001's validation see the literal value "None", which is not a BIC.
+
         optional_fields = {
             "creditor_agent_BIC": _optional(c_bic),
             "debtor_agent_BIC": _optional(_s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic"))),
@@ -114,6 +113,7 @@ def _generation_violations(rows):
                     "message": f"Fila {index}: el camp '{field}' és obligatori per generar un pain.008.001.08 vàlid."
                 })
     return violations
+
 
 def _validation_json(result):
     violations = []
@@ -150,14 +150,20 @@ def generate(payload_json):
         violations = _validation_json(result)
         violations.extend(_generation_violations(rows))
     except Exception as e:
-        violations = str(e)
+        violations = [str(e)]
+
     if not getattr(result, "is_valid", False) or violations:
-        return json.dumps({"success": False, "violations": violations})
+        return json.dumps({
+            "success": False,
+            "message_type": MESSAGE_TYPE,
+            "violations": violations,
+            "rows": len(rows),
+        })
 
     template = DEFAULT_TEMPLATE_REGISTRY.get_template(MESSAGE_TYPE)
     if template is None:
-        raise RuntimeError (f"La versió {MESSAGE_TYPE} no està registrada.")
-    xml = None
+        raise RuntimeError(f"La versió {MESSAGE_TYPE} no està registrada.")
+
     try:
         xml = generate_xml_string(
             data=rows,
@@ -170,12 +176,12 @@ def generate(payload_json):
             "message_type": MESSAGE_TYPE,
             "xml": xml,
             "rows": len(rows),
+            "violations": [],
         })
     except Exception as e:
         return json.dumps({
             "success": False,
             "message_type": MESSAGE_TYPE,
-            "xml": str(e),
+            "violations": [str(e)],
             "rows": len(rows),
         })
-
