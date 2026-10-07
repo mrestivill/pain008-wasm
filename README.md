@@ -1,76 +1,25 @@
-# pain.008 GitHub Pages — Pyodide + pain001
+# pain.008 GitHub Pages — Pyodide + pain001 v4.2
 
-Versió **100% client-side** del generador/validador `pain.008.001.08`.
+100% client-side SEPA Direct Debit generator.
 
-## Arquitectura
+## Stack
+- Pyodide 0.314.0.7
+- Python WASM, single-thread
+- pain001 0.0.72
+- pain.008.001.08 / SEPA SDD
+- GitHub Pages + GitHub Actions
 
-```text
-CSV
- ↓
-JavaScript UI
- ↓
-Pyodide (Python WASM)
- ↓
-pain001 0.0.72
- ↓
-SEPA SDD validation + bundled XSD
- ↓
-pain.008.001.08 XML
- ↓
-Download XML / Download Q1X
-```
+## Important v4.2 fix
+`pain001.validate_scheme()` expects canonical identifier keys with uppercase suffixes:
+- `debtor_account_IBAN`
+- `creditor_account_IBAN`
+- `debtor_agent_BIC`
+- `creditor_agent_BIC`
 
-No hi ha FastAPI, Render, Docker ni servidor propi. GitHub Pages només serveix els fitxers estàtics. Python s'executa dins del navegador.
+The previous version passed lowercase `*_iban` / `*_bic` keys directly to scheme validation, causing every debtor and creditor IBAN to be reported as invalid. v4.2 passes the canonical keys.
 
-`pain001` publica suport per `pain.008.001.08` i el seu generador en memòria valida l'XML contra l'XSD inclòs al paquet. La validació `sepa-sdd` també comprova les regles de l'esquema SEPA. Consulta la documentació oficial abans d'usar el fitxer amb un banc. 
-
-## Important sobre Pyodide
-
-El primer carregat necessita internet perquè el navegador descarrega Pyodide i `pain001` des del CDN/PyPI. Després, el processament de les dades és local al navegador. Aquest repositori no inclou una còpia del wheel ni de totes les dependències de Python.
-
-## CSV
-
-Columnes mínimes del frontend:
-
-- `payment_id`
-- `amount`
-- `currency`
-- `mandate_id`
-- `collection_date`
-- `debtor_name`
-- `debtor_iban`
-
-Opcional:
-
-- `sequence_type` (`FRST`, `RCUR`, `OOFF`, `FNAL`)
-- `debtor_bic`
-- `remittance`
-- dades del creditor per fila (`creditor_name`, `creditor_account_iban`, `creditor_agent_bic`, `creditor_scheme_id`)
-
-Si no existeix `sequence_type`, el codi assigna `OOFF` a totes les files. Si existeix però una fila està buida, també.
-
-## GitHub Pages
-
-1. Puja el contingut del ZIP a un repositori.
-2. Fes push a `main`.
-3. A **Settings → Pages**, selecciona **GitHub Actions**.
-4. El workflow `.github/workflows/pages.yml` desplega els fitxers estàtics.
+## Sequence type
+If the CSV has no `sequence_type` column, `OOFF` is used. Blank values also default to `OOFF`.
 
 ## Q1X
-
-El botó **Download Q1X** no transforma l'XML: descarrega exactament el mateix `pain.008.001.08` validat per `pain001`, però amb extensió `.Q1X`. Això és coherent amb el fitxer de mostra proporcionat, que porta `pain.008.001.08` com a namespace XML.
-
-## Font de l'enginy
-
-- Pain001: https://github.com/sebastienrousseau/pain001
-- PyPI: https://pypi.org/project/pain001/
-- Pyodide: https://pyodide.org/
-
-
-## V4 runtime
-
-This build is pinned to Pyodide **0.314.0.7** and `pain001==0.0.72`. Python runs on the browser main thread; the application does not create Web Workers, call `setInterruptBuffer()`, enable pthreads, or use `SharedArrayBuffer` directly. Pyodide itself may report a browser console warning related to SAB during WASM runtime initialization; that warning is from the runtime and is not an application-level SAB API call.
-
-The JavaScript/Python bridge uses `pyodide.runPythonAsync()` plus `pyodide.globals.set()` and does not call Python functions through `pyodide.globals.get(...)`.
-
-Pyodide is loaded from the versioned CDN URL documented for 0.314.0.7. `pain001` is installed in-browser with `micropip` and generates/validates `pain.008.001.08` using its bundled template/XSD and `sepa-sdd` validation.
+The Q1X download contains the same generated `pain.008.001.08` XML and uses a `.Q1X` extension, matching the supplied bank example format.
