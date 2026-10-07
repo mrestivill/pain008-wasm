@@ -30,7 +30,7 @@
       </div></div>
       <div class="error-box" id="csvError" hidden></div>
       <textarea id="csvInput" spellcheck="false" aria-label="CSV payment records"></textarea>
-      <div class="csv-help">Columnes principals: <code>payment_id</code>, <code>amount</code>, <code>currency</code>, <code>mandate_id</code>, <code>collection_date</code>, <code>debtor_name</code>, <code>debtor_iban</code>. <code>sequence_type</code> és opcional: si falta o és buida, s'utilitza <strong>OOFF</strong>.</div>
+      <div class="csv-help">Columnes principals: <code>payment_id</code>, <code>amount</code>, <code>currency</code>, <code>mandate_id</code>, <code>mandate_signed_on</code>, <code>collection_date</code>, <code>debtor_name</code>, <code>debtor_iban</code>. <code>debtor_bic</code> i <code>remittance</code> són opcionals. <code>sequence_type</code> és opcional: si falta o és buida, s'utilitza <strong>OOFF</strong>.</div>
     </section>
 
     <section class="panel config">
@@ -55,7 +55,7 @@
 
     <section class="panel details"><h2>Sequence type</h2><div class="checks">
       <div><b>FRST</b><span>First — primer cobrament d’un mandat recurrent.</span></div><div><b>RCUR</b><span>Recurring — cobrament recurrent.</span></div><div><b>OOFF</b><span>One-off — cobrament únic.</span></div><div><b>FNAL</b><span>Final — últim cobrament d’un mandat recurrent.</span></div>
-    </div><p class="muted">Si el CSV no porta <code>sequence_type</code>, totes les files reben <strong>OOFF</strong>. Si una fila té el camp buit, també.</p></section>
+    </div><p class="muted">Si el CSV no porta <code>sequence_type</code>, totes les files reben <strong>OOFF</strong>. Si una fila té el camp buit, també. <code>mandate_id</code> i <code>mandate_signed_on</code> són necessaris per generar un SDD vàlid; no s'inventen automàticament.</p></section>
   </main>
   <footer class="footer"><div class="wrap">GitHub Pages · Pyodide 0.314.0.7 · Python · pain001 0.0.72 · single-thread · pain.008.001.08</div></footer>
   <script src="try-pain008.js"></script>

@@ -10,6 +10,11 @@ def _s(value):
     return "" if value is None else str(value).strip()
 
 
+def _optional(value):
+    value = _s(value)
+    return value if value else None
+
+
 def _rows_from_payload(payload):
     raw_rows = payload.get("rows", [])
     cfg = payload.get("config", {})
@@ -19,6 +24,7 @@ def _rows_from_payload(payload):
     default_seq = "OOFF"
     out = []
     msg_id = _s(cfg.get("message_id")) or "DD" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    payment_info_id = _s(cfg.get("payment_info_id")) or (msg_id[:30] + "-P1")
     creditor_name = _s(cfg.get("creditor_name"))
     creditor_iban = _s(cfg.get("creditor_iban"))
     creditor_bic = _s(cfg.get("creditor_bic"))
@@ -43,26 +49,45 @@ def _rows_from_payload(payload):
             "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "initiator_name": initiator_name,
             "payment_id": payment_id,
+            "payment_info_id": payment_info_id,
             "end_to_end_id": payment_id,
             "execution_date": collection_date,
             "requested_collection_date": collection_date,
             "creditor_name": c_name,
             "creditor_account_IBAN": c_iban,
-            "creditor_agent_BIC": c_bic,
+            "creditor_agent_BIC": _optional(c_bic),
             "creditor_scheme_id": c_scheme,
             "debtor_name": _s(row.get("debtor_name")),
             "debtor_account_IBAN": _s(row.get("debtor_iban")) or _s(row.get("debtor_account_iban")),
-            "debtor_agent_BIC": _s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic")),
+            "debtor_agent_BIC": _optional(_s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic"))),
             "payment_amount": _s(row.get("amount")),
             "payment_currency": _s(row.get("currency")) or "EUR",
             "mandate_id": _s(row.get("mandate_id")),
-            "mandate_signed_on": _s(row.get("mandate_signed_on")) or _s(row.get("mandate_signature_date")),
+            "mandate_signed_on": _optional(_s(row.get("mandate_signed_on")) or _s(row.get("mandate_signature_date"))),
             "sequence_type": sequence_type,
             "charge_bearer": "SLEV",
-            "remittance_info": _s(row.get("remittance")) or _s(row.get("remittance_info")),
+            "remittance_info": _optional(_s(row.get("remittance")) or _s(row.get("remittance_info"))),
         })
     return out
 
+
+def _generation_violations(rows):
+    violations = []
+    for index, row in enumerate(rows, start=1):
+        required = {
+            "mandate_id": row.get("mandate_id"),
+            "mandate_signed_on": row.get("mandate_signed_on"),
+            "debtor_name": row.get("debtor_name"),
+            "debtor_account_IBAN": row.get("debtor_account_IBAN"),
+        }
+        for field, value in required.items():
+            if not _s(value):
+                violations.append({
+                    "rule": "generation_required",
+                    "field": field,
+                    "message": f"Fila {index}: el camp '{field}' és obligatori per generar un pain.008.001.08 vàlid."
+                })
+    return violations
 
 def _validation_json(result):
     violations = []
@@ -80,9 +105,10 @@ def validate(payload_json):
     rows = _rows_from_payload(payload)
     result = validate_scheme(rows, profile="sepa-sdd", message_type=MESSAGE_TYPE)
     violations = _validation_json(result)
+    violations.extend(_generation_violations(rows))
     has_sequence_column = any("sequence_type" in r for r in payload.get("rows", []))
     return json.dumps({
-        "is_valid": bool(getattr(result, "is_valid", False)),
+        "is_valid": bool(getattr(result, "is_valid", False)) and not violations,
         "rows": len(rows),
         "violations": violations,
         "sequence_type_defaulted_to_ooff": not has_sequence_column,
@@ -94,7 +120,8 @@ def generate(payload_json):
     rows = _rows_from_payload(payload)
     result = validate_scheme(rows, profile="sepa-sdd", message_type=MESSAGE_TYPE)
     violations = _validation_json(result)
-    if not getattr(result, "is_valid", False):
+    violations.extend(_generation_violations(rows))
+    if not getattr(result, "is_valid", False) or violations:
         return json.dumps({"success": False, "violations": violations})
 
     bundle = TEMPLATES_DIR / MESSAGE_TYPE

@@ -23,3 +23,7 @@ If the CSV has no `sequence_type` column, `OOFF` is used. Blank values also defa
 
 ## Q1X
 The Q1X download contains the same generated `pain.008.001.08` XML and uses a `.Q1X` extension, matching the supplied bank example format.
+
+
+## Generation requirements
+For pain.008.001.08 SEPA Direct Debit generation, each transaction must provide `mandate_id` and `mandate_signed_on`. `debtor_bic` and `remittance` are optional and are omitted when empty. `PmtInfId` is generated automatically.
