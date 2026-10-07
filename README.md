@@ -1,55 +1,187 @@
-# pain.008 GitHub Pages — V4.5
+# pain008-wasm
 
-V4.5 fixes optional BIC handling and makes validation strictly manual.
+Client-side **SEPA Direct Debit (`pain.008.001.08`) generator** running entirely in the browser with Python compiled to WebAssembly.
 
-- Empty creditor/debtor BICs are omitted from generated XML.
-- SEPA-SDD scheme validation uses an internal valid-format sentinel only when a BIC is absent, preventing `None` from being validated as a BIC. The sentinel is never written to XML.
-- The page starts in `Not validated` state.
-- Loading sample/CSV or editing any field does not execute validation.
-- The `Validate` button is the only action that runs `pain001.validate_scheme`.
-- XML generation remains disabled until the current data has been successfully validated.
-- `try-pain008.js?v=45` cache-busts the browser/GitHub Pages copy of the JavaScript.
+The application provides a GitHub Pages interface for loading transaction data, validating it against the SEPA scheme, and generating the corresponding XML file.
 
-# pain.008 GitHub Pages — Pyodide + pain001 v4.2
+## Features
 
-100% client-side SEPA Direct Debit generator.
+* 100% client-side execution.
+* No server or backend required.
+* CSV and sample-data loading.
+* Manual SEPA/XSD validation.
+* `pain.008.001.08` XML generation.
+* Optional `.Q1X` download using the same generated XML content.
+* Raw XML preview for inspecting the generated document.
+* XML and Q1X downloads are enabled only after successful final validation.
 
-## Stack
-- Pyodide 0.314.0.7
-- Python WASM, single-thread
-- pain001 0.0.72
-- pain.008.001.08 / SEPA SDD
-- GitHub Pages + GitHub Actions
+## Technology
 
-## Important v4.2 fix
-`pain001.validate_scheme()` expects canonical identifier keys with uppercase suffixes:
-- `debtor_account_IBAN`
-- `creditor_account_IBAN`
-- `debtor_agent_BIC`
-- `creditor_agent_BIC`
+* [Pyodide](https://pyodide.org/) — Python running in WebAssembly.
+* [pain001](https://pypi.org/project/pain001/) — SEPA payment message generation and validation.
+* Python WebAssembly, single-threaded.
+* `pain.008.001.08` — SEPA Direct Debit.
+* GitHub Pages.
+* GitHub Actions.
 
-The previous version passed lowercase `*_iban` / `*_bic` keys directly to scheme validation, causing every debtor and creditor IBAN to be reported as invalid. v4.2 passes the canonical keys.
+## Validation
 
-## Sequence type
-If the CSV has no `sequence_type` column, `OOFF` is used. Blank values also default to `OOFF`.
+Validation is **strictly manual**.
+
+The application does not run validation automatically when:
+
+* the page is opened;
+* sample data is loaded;
+* a CSV file is loaded;
+* a form field is edited.
+
+The **Validate** button is the only action that executes the `pain001` scheme validation.
+
+The application starts in the `Not validated` state.
+
+After a successful validation, modifying any input field invalidates the previous validation result. The data must then be validated again before XML or Q1X can be downloaded.
+
+This ensures that the generated file always corresponds to the data that was actually validated.
+
+## Optional fields
+
+Optional fields are omitted when they are empty.
+
+In particular:
+
+* `debtor_bic` is optional.
+* `creditor_bic` is optional.
+* `remittance` is optional.
+
+Empty optional values are not sent to `pain001` as `None` values.
+
+For BIC validation, when a BIC is absent, an internal valid-format sentinel may be used only for the validation step. The sentinel is never included in the generated XML.
+
+## Input data
+
+Each transaction requires:
+
+* `mandate_id`
+* `mandate_signed_on`
+
+The following fields are optional:
+
+* `debtor_bic`
+* `remittance`
+
+If the CSV does not contain a `sequence_type` column, `OOFF` is used.
+
+Blank `sequence_type` values also default to `OOFF`.
+
+`PmtInfId` is generated automatically.
+
+## Dates
+
+Dates such as `collection_date` and `mandate_signed_on` are normalized to ISO format:
+
+```text
+YYYY-MM-DD
+```
+
+The generator accepts the mandate signature date through the following supported field names:
+
+* `mandate_signed_on`
+* `mandate_signature_date`
+* `mandate_date_of_signature`
+* `date_of_signature`
+
+## SEPA scheme validation
+
+`pain001.validate_scheme()` expects canonical identifier keys.
+
+The validation payload therefore uses:
+
+```text
+debtor_account_IBAN
+creditor_account_IBAN
+debtor_agent_BIC
+creditor_agent_BIC
+```
+
+rather than lowercase variants such as:
+
+```text
+debtor_account_iban
+creditor_account_iban
+debtor_agent_bic
+creditor_agent_bic
+```
+
+This mapping is required for correct IBAN and BIC scheme validation.
+
+## XML generation
+
+There are two distinct generation paths:
+
+### Raw XML preview
+
+The **Generate XML** action can render a raw XML preview even when scheme or XSD validation reports an error.
+
+This preview is intended for inspection and debugging.
+
+It does **not** authorize downloading the file.
+
+### Validated XML
+
+The final XML generation path uses:
+
+```text
+generate_xml_string()
+```
+
+The XML and Q1X downloads are enabled only when the final generated document successfully passes XSD validation.
+
+This prevents an invalid document from being downloaded even if a raw preview can be displayed.
 
 ## Q1X
-The Q1X download contains the same generated `pain.008.001.08` XML and uses a `.Q1X` extension, matching the supplied bank example format.
 
+The Q1X download contains the same generated `pain.008.001.08` XML content as the XML download.
 
-## Generation requirements
-For pain.008.001.08 SEPA Direct Debit generation, each transaction must provide `mandate_id` and `mandate_signed_on`. `debtor_bic` and `remittance` are optional and are omitted when empty. `PmtInfId` is generated automatically.
+Only the file extension differs:
 
-### Validació manual
-La pàgina no executa la validació automàticament en obrir-se, carregar un CSV, usar el sample ni modificar camps. Cal prémer **Validate** per executar `pain001` i la validació SEPA/XSD. Si després de validar es modifica qualsevol dada, la validació anterior queda invalidada i cal tornar a prémer **Validate** abans de generar l'XML.
+```text
+.Q1X
+```
 
-Els camps opcionals buits, com els BIC, s'ometen del payload enviat a `pain001`; no s'envia `None` com a valor.
+This matches the supplied bank example format.
 
+## Browser cache
 
-## V4.8 generation behavior
+The JavaScript asset is cache-busted when necessary so that GitHub Pages does not continue serving an older browser copy after deployment.
 
-- Example `mandate_signed_on` uses 2026-10-07.
-- `collection_date` and `mandate_signed_on` are parsed to ISO `YYYY-MM-DD` before XML generation.
-- The pain001 template mapping accepts `mandate_signed_on`, `mandate_signature_date`, `mandate_date_of_signature`, and `date_of_signature`.
-- Generate XML renders a raw XML preview even when scheme/XSD validation fails. The preview is never enabled for XML/Q1X download unless the final generated XML passes XSD validation.
-- `generate_xml_string()` remains the final validated generation path; raw preview is rendered separately because pain001's documented function returns only generated-and-validated XML.
+## Deployment
+
+The project is designed to run as a static GitHub Pages application.
+
+GitHub Actions can be used to build and deploy the application without requiring a server-side runtime.
+
+Once deployed, the complete generation and validation workflow runs locally in the user's browser.
+
+## Privacy
+
+No transaction data needs to be sent to a server for XML generation or validation.
+
+The application is designed to process the data entirely client-side.
+
+## Project structure
+
+A typical deployment contains:
+
+```text
+pain008-wasm/
+├── index.html
+├── try-pain008.js
+├── python/
+    └── pain008.py
+├── ...
+└── .github/
+    └── workflows/
+        └── ...
+```
+
+The exact project structure may evolve independently from the application behaviour described in this document.
