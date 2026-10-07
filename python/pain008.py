@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from pain001 import generate_xml_string, validate_scheme
+from pain001.xml.validate_via_xsd import validate_xml_string_via_xsd
 from pain001.templates import DEFAULT_TEMPLATE_REGISTRY
 
 MESSAGE_TYPE = "pain.008.001.08"
@@ -92,6 +93,18 @@ def _rows_from_payload(payload):
             "remittance_info": _optional(_s(row.get("remittance")) or _s(row.get("remittance_info"))),
         }
         item.update({key: value for key, value in optional_fields.items() if value is not None})
+
+        # Keep both the current canonical vocabulary and the legacy/template
+        # spellings used by some pain001 0.0.72 Jinja templates.
+        item["payment_information_id"] = payment_info_id
+        if "mandate_signed_on" in item:
+            item["mandate_signature_date"] = item["mandate_signed_on"]
+        if "remittance_info" in item:
+            item["remittance_information"] = item["remittance_info"]
+        if c_bic:
+            item["creditor_agent_bic"] = c_bic
+        if _s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic")):
+            item["debtor_agent_bic"] = _s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic"))
         out.append(item)
     return out
 
@@ -141,36 +154,80 @@ def validate(payload_json):
     })
 
 
+def _clean_optional_xml(xml):
+    """Remove optional empty agent/remittance nodes before final XSD validation."""
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(xml)
+    ns = {"p": f"urn:iso:std:iso:20022:tech:xsd:{MESSAGE_TYPE}"}
+    for parent_path, tag in [
+        (".//p:DbtrAgt/p:FinInstnId", "BICFI"),
+        (".//p:CdtrAgt/p:FinInstnId", "BICFI"),
+        (".//p:RmtInf", "Ustrd"),
+    ]:
+        for parent in root.findall(parent_path, ns):
+            child = parent.find(f"p:{tag}", ns)
+            if child is not None and not _s(child.text):
+                parent.remove(child)
+                # Remove now-empty wrapper where it is optional.
+                if len(parent) == 0 and parent.tag.endswith("RmtInf"):
+                    for tx in root.findall(".//p:DrctDbtTxInf", ns):
+                        for rmt in list(tx):
+                            if rmt is parent:
+                                tx.remove(rmt)
+    return ET.tostring(root, encoding="unicode", xml_declaration=True)
+
+
 def generate(payload_json):
     payload = json.loads(payload_json)
     rows = _rows_from_payload(payload)
-    result = None
     try:
-        result = validate_scheme(_rows_for_scheme_validation(rows), profile="sepa-sdd", message_type=MESSAGE_TYPE)
+        result = validate_scheme(
+            _rows_for_scheme_validation(rows),
+            profile="sepa-sdd",
+            message_type=MESSAGE_TYPE,
+        )
         violations = _validation_json(result)
         violations.extend(_generation_violations(rows))
     except Exception as e:
-        violations = [str(e)]
+        return json.dumps({"success": False, "violations": [str(e)], "rows": len(rows)})
 
     if not getattr(result, "is_valid", False) or violations:
-        return json.dumps({
-            "success": False,
-            "message_type": MESSAGE_TYPE,
-            "violations": violations,
-            "rows": len(rows),
-        })
+        return json.dumps({"success": False, "violations": violations, "rows": len(rows)})
 
     template = DEFAULT_TEMPLATE_REGISTRY.get_template(MESSAGE_TYPE)
     if template is None:
-        raise RuntimeError(f"La versió {MESSAGE_TYPE} no està registrada.")
+        return json.dumps({
+            "success": False,
+            "violations": [f"La versió {MESSAGE_TYPE} no està registrada."],
+            "rows": len(rows),
+        })
 
     try:
+        # The bundled 0.0.72 template expects a BIC node when the agent block
+        # is rendered. Use the validation-only sentinel here; it is removed from
+        # the final XML when the user's BIC is empty.
+        render_rows = []
+        for row in rows:
+            item = dict(row)
+            if not _s(item.get("creditor_agent_BIC")):
+                item["creditor_agent_BIC"] = _VALIDATION_BIC_SENTINEL
+            if not _s(item.get("debtor_agent_BIC")):
+                item["debtor_agent_BIC"] = _VALIDATION_BIC_SENTINEL
+            render_rows.append(item)
+
         xml = generate_xml_string(
-            data=rows,
+            data=render_rows,
             payment_initiation_message_type=MESSAGE_TYPE,
             xml_template_path=template.template_path,
             xsd_schema_path=template.xsd_path,
         )
+
+        # Never expose the internal BIC sentinel. Restore the user's optional
+        # fields and validate the exact XML that will be downloaded.
+        xml = _clean_optional_xml(xml)
+        if not validate_xml_string_via_xsd(xml, template.xsd_path):
+            raise RuntimeError("El XML final no supera la validació XSD després d'ometre els camps opcionals buits.")
+
         return json.dumps({
             "success": True,
             "message_type": MESSAGE_TYPE,
