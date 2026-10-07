@@ -46,9 +46,10 @@ La pàgina no executa la validació automàticament en obrir-se, carregar un CSV
 Els camps opcionals buits, com els BIC, s'ometen del payload enviat a `pain001`; no s'envia `None` com a valor.
 
 
-## V4.8
+## V4.8 generation behavior
 
-- El CSV d’exemple genera `mandate_signed_on` amb la data actual del navegador en format `YYYY-MM-DD`.
-- `collection_date` i `mandate_signed_on` es normalitzen abans de passar les dades a `pain001`.
-- S’accepten `YYYY-MM-DD`, `DD/MM/YYYY`, `DD-MM-YYYY`, `YYYY/MM/DD` i datetimes ISO; la sortida sempre és `YYYY-MM-DD`.
-- Si una data no és interpretable, la generació retorna un error clar en lloc d’enviar una cadena buida a l’XSD.
+- Example `mandate_signed_on` uses 2026-10-07.
+- `collection_date` and `mandate_signed_on` are parsed to ISO `YYYY-MM-DD` before XML generation.
+- The pain001 template mapping accepts `mandate_signed_on`, `mandate_signature_date`, `mandate_date_of_signature`, and `date_of_signature`.
+- Generate XML renders a raw XML preview even when scheme/XSD validation fails. The preview is never enabled for XML/Q1X download unless the final generated XML passes XSD validation.
+- `generate_xml_string()` remains the final validated generation path; raw preview is rendered separately because pain001's documented function returns only generated-and-validated XML.

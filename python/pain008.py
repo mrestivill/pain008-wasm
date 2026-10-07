@@ -1,6 +1,9 @@
 import json
 from datetime import date, datetime, timezone
-from pain001 import generate_xml_string, validate_scheme
+from pain001 import generate_xml_string, normalize_payment_records, validate_scheme
+from pain001.xml.message_registry import prepare_xml_data
+from jinja2 import select_autoescape
+from jinja2.sandbox import SandboxedEnvironment
 from pain001.xml.validate_via_xsd import validate_xml_string_via_xsd
 from pain001.templates import DEFAULT_TEMPLATE_REGISTRY
 
@@ -16,33 +19,22 @@ def _optional(value):
     return value if value else None
 
 
-def _iso_date(value, field_name):
-    """Normalize common CSV/UI date formats to the XSD lexical date form YYYY-MM-DD."""
-    raw = _s(value)
-    if not raw:
+def _iso_date(value, field_name, row_number=None):
+    text = _s(value)
+    if not text:
         return ""
-    candidates = (
-        "%Y-%m-%d",
-        "%d/%m/%Y",
-        "%d-%m-%Y",
-        "%Y/%m/%d",
-    )
-    for fmt in candidates:
+    candidates = [text, text.replace("/", "-"), text.replace(".", "-")]
+    for candidate in candidates:
         try:
-            return datetime.strptime(raw, fmt).date().isoformat()
+            if "T" in candidate:
+                return datetime.fromisoformat(candidate).date().isoformat()
+            if " " in candidate and len(candidate) >= 19:
+                return datetime.fromisoformat(candidate.replace(" ", "T", 1)).date().isoformat()
+            return date.fromisoformat(candidate).isoformat()
         except ValueError:
-            pass
-    # Accept an ISO datetime and keep only its date component.
-    try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00")).date().isoformat()
-    except ValueError:
-        raise ValueError(
-            f"{field_name}: data no vàlida '{raw}'. Utilitza YYYY-MM-DD (per exemple 2026-10-07)."
-        )
-
-
-def _today_iso():
-    return date.today().isoformat()
+            continue
+    where = f" de la fila {row_number}" if row_number else ""
+    raise ValueError(f"{field_name}{where} ha de ser una data vàlida (YYYY-MM-DD). Valor rebut: {text!r}")
 
 
 # pain001 0.0.72 can run the SEPA-SDD scheme BIC check even when an optional
@@ -79,14 +71,14 @@ def _rows_from_payload(payload):
     creditor_iban = _s(cfg.get("creditor_iban"))
     creditor_bic = _s(cfg.get("creditor_bic"))
     creditor_scheme_id = _s(cfg.get("creditor_scheme_id"))
-    default_collection_date = _iso_date(cfg.get("collection_date"), "collection_date") if _s(cfg.get("collection_date")) else ""
+    default_collection_date = _s(cfg.get("collection_date"))
     initiator_name = _s(cfg.get("initiator_name")) or creditor_name
 
     for index, src in enumerate(raw_rows, start=1):
         row = {str(k).strip().lower(): _s(v) for k, v in src.items()}
         sequence_type = _s(row.get("sequence_type")) or default_seq
         payment_id = _s(row.get("payment_id")) or f"DD-{index:05d}"
-        collection_date = _iso_date(row.get("collection_date"), f"Fila {index} collection_date") if _s(row.get("collection_date")) else default_collection_date
+        collection_date = _iso_date(_s(row.get("collection_date")) or default_collection_date, "collection_date", index)
 
         c_name = _s(row.get("creditor_name")) or creditor_name
         c_iban = _s(row.get("creditor_account_iban")) or _s(row.get("creditor_iban")) or creditor_iban
@@ -115,9 +107,13 @@ def _rows_from_payload(payload):
             "charge_bearer": "SLEV",
         }
 
-        mandate_signed_on = _s(row.get("mandate_signed_on")) or _s(row.get("mandate_signature_date"))
-        if mandate_signed_on:
-            mandate_signed_on = _iso_date(mandate_signed_on, f"Fila {index} mandate_signed_on")
+        mandate_signed_on = _iso_date(
+            _s(row.get("mandate_signed_on"))
+            or _s(row.get("mandate_signature_date"))
+            or _s(row.get("mandate_date_of_signature")),
+            "mandate_signed_on",
+            index,
+        )
         optional_fields = {
             "creditor_agent_BIC": _optional(c_bic),
             "debtor_agent_BIC": _optional(_s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic"))),
@@ -131,6 +127,8 @@ def _rows_from_payload(payload):
         item["payment_information_id"] = payment_info_id
         if "mandate_signed_on" in item:
             item["mandate_signature_date"] = item["mandate_signed_on"]
+            item["mandate_date_of_signature"] = item["mandate_signed_on"]
+            item["date_of_signature"] = item["mandate_signed_on"]
         if "remittance_info" in item:
             item["remittance_information"] = item["remittance_info"]
         if c_bic:
@@ -149,7 +147,6 @@ def _generation_violations(rows):
             "mandate_signed_on": row.get("mandate_signed_on"),
             "debtor_name": row.get("debtor_name"),
             "debtor_account_IBAN": row.get("debtor_account_IBAN"),
-            "requested_collection_date": row.get("requested_collection_date"),
         }
         for field, value in required.items():
             if not _s(value):
@@ -210,9 +207,25 @@ def _clean_optional_xml(xml):
     return ET.tostring(root, encoding="unicode", xml_declaration=True)
 
 
+def _render_unvalidated_xml(rows, template):
+    """Render the same bundled Jinja template without running XSD validation."""
+    normalized = normalize_payment_records(rows)
+    xml_data = prepare_xml_data(normalized, MESSAGE_TYPE)
+    with open(template.template_path, encoding="utf-8") as handle:
+        template_source = handle.read()
+    env = SandboxedEnvironment(
+        autoescape=select_autoescape(enabled_extensions=("xml",), default_for_string=True)
+    )
+    return env.from_string(template_source).render(**xml_data)
+
+
 def generate(payload_json):
     payload = json.loads(payload_json)
     rows = _rows_from_payload(payload)
+    template = DEFAULT_TEMPLATE_REGISTRY.get_template(MESSAGE_TYPE)
+    if template is None:
+        return json.dumps({"success": False, "violations": [f"La versió {MESSAGE_TYPE} no està registrada."], "rows": len(rows)})
+
     try:
         result = validate_scheme(
             _rows_for_scheme_validation(rows),
@@ -222,12 +235,22 @@ def generate(payload_json):
         violations = _validation_json(result)
         violations.extend(_generation_violations(rows))
     except Exception as e:
-        return json.dumps({"success": False, "violations": [str(e)], "rows": len(rows)})
+        violations = [str(e)]
+        try:
+            preview = _render_unvalidated_xml(rows, template)
+        except Exception as render_error:
+            preview = ""
+            violations.append(f"No s'ha pogut renderitzar la previsualització XML: {render_error}")
+        return json.dumps({"success": False, "violations": violations, "xml_preview": preview, "rows": len(rows)})
 
     if not getattr(result, "is_valid", False) or violations:
-        return json.dumps({"success": False, "violations": violations, "rows": len(rows)})
+        try:
+            preview = _render_unvalidated_xml(rows, template)
+        except Exception as render_error:
+            preview = ""
+            violations.append(f"No s'ha pogut renderitzar la previsualització XML: {render_error}")
+        return json.dumps({"success": False, "violations": violations, "xml_preview": preview, "rows": len(rows)})
 
-    template = DEFAULT_TEMPLATE_REGISTRY.get_template(MESSAGE_TYPE)
     if template is None:
         return json.dumps({
             "success": False,
@@ -265,13 +288,23 @@ def generate(payload_json):
             "success": True,
             "message_type": MESSAGE_TYPE,
             "xml": xml,
+            "xml_preview": xml,
             "rows": len(rows),
             "violations": [],
         })
     except Exception as e:
+        preview = ""
+        try:
+            preview = _render_unvalidated_xml(rows, template)
+        except Exception as render_error:
+            preview = ""
+            error_text = f"{e}; previsualització XML: {render_error}"
+        else:
+            error_text = str(e)
         return json.dumps({
             "success": False,
             "message_type": MESSAGE_TYPE,
-            "violations": [str(e)],
+            "violations": [error_text],
+            "xml_preview": preview,
             "rows": len(rows),
         })
