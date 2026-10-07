@@ -27,3 +27,8 @@ The Q1X download contains the same generated `pain.008.001.08` XML and uses a `.
 
 ## Generation requirements
 For pain.008.001.08 SEPA Direct Debit generation, each transaction must provide `mandate_id` and `mandate_signed_on`. `debtor_bic` and `remittance` are optional and are omitted when empty. `PmtInfId` is generated automatically.
+
+### Validació manual
+La pàgina no executa la validació automàticament en obrir-se, carregar un CSV, usar el sample ni modificar camps. Cal prémer **Validate** per executar `pain001` i la validació SEPA/XSD. Si després de validar es modifica qualsevol dada, la validació anterior queda invalidada i cal tornar a prémer **Validate** abans de generar l'XML.
+
+Els camps opcionals buits, com els BIC, s'ometen del payload enviat a `pain001`; no s'envia `None` com a valor.

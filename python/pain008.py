@@ -43,7 +43,7 @@ def _rows_from_payload(payload):
         c_bic = _s(row.get("creditor_agent_bic")) or _s(row.get("creditor_bic")) or creditor_bic
         c_scheme = _s(row.get("creditor_scheme_id")) or creditor_scheme_id
 
-        out.append({
+        item = {
             "id": msg_id,
             "message_id": msg_id,
             "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -55,19 +55,25 @@ def _rows_from_payload(payload):
             "requested_collection_date": collection_date,
             "creditor_name": c_name,
             "creditor_account_IBAN": c_iban,
-            "creditor_agent_BIC": _optional(c_bic),
             "creditor_scheme_id": c_scheme,
             "debtor_name": _s(row.get("debtor_name")),
             "debtor_account_IBAN": _s(row.get("debtor_iban")) or _s(row.get("debtor_account_iban")),
-            "debtor_agent_BIC": _optional(_s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic"))),
             "payment_amount": _s(row.get("amount")),
             "payment_currency": _s(row.get("currency")) or "EUR",
             "mandate_id": _s(row.get("mandate_id")),
-            "mandate_signed_on": _optional(_s(row.get("mandate_signed_on")) or _s(row.get("mandate_signature_date"))),
             "sequence_type": sequence_type,
             "charge_bearer": "SLEV",
+        }
+        # Optional XML fields must be omitted when empty. Passing None makes
+        # pain001's validation see the literal value "None", which is not a BIC.
+        optional_fields = {
+            "creditor_agent_BIC": _optional(c_bic),
+            "debtor_agent_BIC": _optional(_s(row.get("debtor_bic")) or _s(row.get("debtor_agent_bic"))),
+            "mandate_signed_on": _optional(_s(row.get("mandate_signed_on")) or _s(row.get("mandate_signature_date"))),
             "remittance_info": _optional(_s(row.get("remittance")) or _s(row.get("remittance_info"))),
-        })
+        }
+        item.update({key: value for key, value in optional_fields.items() if value is not None})
+        out.append(item)
     return out
 
 
