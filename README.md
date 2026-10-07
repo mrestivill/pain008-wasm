@@ -43,6 +43,37 @@ After a successful validation, modifying any input field invalidates the previou
 
 This ensures that the generated file always corresponds to the data that was actually validated.
 
+## Validation flow
+
+```mermaid
+flowchart TD
+    A[Open pain008-wasm] --> B[Load sample or CSV]
+    B --> C[Edit transaction data]
+    C --> D[Not validated]
+
+    D --> E{Validate}
+    E -->|Invalid| F[Show validation errors]
+    F --> C
+
+    E -->|Valid| G[Validated data]
+    G --> H{Generate XML}
+
+    H --> I[Generate raw XML preview]
+    I --> J{XSD validation}
+
+    J -->|Invalid| K[Show XML validation errors]
+    K --> C
+
+    J -->|Valid| L[Enable XML download]
+    J -->|Valid| M[Enable Q1X download]
+
+    L --> N[Download pain.008.001.08 XML]
+    M --> O[Download same XML as .Q1X]
+
+    C --> P[Invalidate previous validation]
+    P --> D
+```
+
 ## Optional fields
 
 Optional fields are omitted when they are empty.
