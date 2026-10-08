@@ -183,6 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('saveConfig')
     .addEventListener('click', saveConfig);
+  
+  document.getElementById('loadConfig')
+    .addEventListener('click', loadConfig);
 
   document.getElementById('clearConfig')
     .addEventListener('click', clearConfig);
