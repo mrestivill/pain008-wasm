@@ -14,18 +14,7 @@ DD-10003,19.95,EUR,MANDATE-1003,2026-10-07,OOFF,2026-10-15,Demo Customer,ES91210
     const rows=[]; let row=[], cell="", quoted=false;
     for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];if(c==='"'&&quoted&&n==='"'){cell+='"';i++;continue}if(c==='"'){quoted=!quoted;continue}if(c===','&&!quoted){row.push(cell);cell='';continue}if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&n==='\n')i++;row.push(cell);cell='';if(row.some(v=>v.trim()))rows.push(row);row=[];continue}cell+=c}if(cell||row.length){row.push(cell);if(row.some(v=>v.trim()))rows.push(row)}if(!rows.length)return[];const h=rows[0].map(x=>x.trim().toLowerCase());return rows.slice(1).map(v=>Object.fromEntries(h.map((k,i)=>[k,(v[i]||'').trim()])));
   }
-  document.addEventListener('DOMContentLoaded', () => {
-    const collectionDate = document.getElementById('collectionDate');
 
-    const date = new Date();
-    date.setDate(date.getDate() + 7);
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    collectionDate.value = `${year}-${month}-${day}`;
-  });
   function payload(){return {rows:parseCSV(els.csv.value),config:{creditor_name:els.creditorName.value,creditor_iban:els.creditorIban.value,creditor_bic:els.creditorBic.value,creditor_scheme_id:els.creditorScheme.value,collection_date:els.collectionDate.value,initiator_name:els.initiatorName.value}}}
   function localSummary(rows){const total=rows.reduce((s,r)=>s+(Number((r.amount||'0').replace(',','.'))||0),0);els.summary.innerHTML=`<div class="metric"><b>${rows.length}</b><span>transactions</span></div><div class="metric"><b>${total.toFixed(2)}</b><span>control sum</span></div>`}
   function showError(e){els.csvError.textContent=e?.message||String(e);els.csvError.hidden=false;els.status.textContent="Error";els.status.className="status bad"}
@@ -190,20 +179,35 @@ function calculateCreditorId(country, businessCode, nationalId) {
   businessCode = businessCode.toUpperCase();
   nationalId = nationalId.toUpperCase();
 
-  /function calculateCreditorId(country, businessCode, nationalId) {
-
-  country = country.toUpperCase().trim();
-  businessCode = businessCode.toUpperCase().trim();
-  nationalId = nationalId.toUpperCase().trim();
-
   // Eliminar caràcters no alfanumèrics
   nationalId = nationalId.replace(/[^A-Z0-9]/g, '');
 
-  // Creditor ID provisional amb check digits = 00
-  const provisional = country + '00' + businessCode + nationalId;
+  // Per calcular el checksum no s'utilitza el Business Code
+  const checkString = nationalId + country + '00';
 
-  // sepa.js calcula els check digits MOD 97-10
-  return SEPA.checksumCreditorID(provisional);
+  // Convertir lletres A-Z a números 10-35
+  let numericString = '';
+
+  for (const char of checkString) {
+    if (/[A-Z]/.test(char)) {
+      numericString += char.charCodeAt(0) - 55;
+    } else {
+      numericString += char;
+    }
+  }
+
+  // MOD 97-10
+  let remainder = 0;
+
+
+  for (const digit of numericString) {
+    remainder = (remainder * 10 + Number(digit)) % 97;
+  }
+
+  const checkDigits = String(98 - remainder).padStart(2, '0');
+
+
+  return country + checkDigits + businessCode + nationalId;
 }
 
  
@@ -248,5 +252,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   updateCreditorId();
+  const collectionDate = document.getElementById('collectionDate');
+
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  collectionDate.value = `${year}-${month}-${day}`;
 
 });
