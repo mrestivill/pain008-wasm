@@ -37,7 +37,7 @@ DD-10003,19.95,EUR,MANDATE-1003,2026-10-07,OOFF,2026-10-15,Demo Customer,ES91210
     els.status.className = "status neutral";
     els.findings.innerHTML = `<div class="finding">${escapeHtml(message)}</div>`;
     els.generateFindings.innerHTML = `<div class="finding">${escapeHtml(message)}</div>`;
-    els.xml.textContent = "Click Validate or Generate XML to run validation.";
+    els.xml.textContent = "Click Validate or Generate to run validation.";
   }
   function render(data){
     const violations=data.violations||[];
@@ -114,7 +114,7 @@ DD-10003,19.95,EUR,MANDATE-1003,2026-10-07,OOFF,2026-10-15,Demo Customer,ES91210
       els.status.className='status bad';
       els.xml.textContent='XML no generat.';
     }finally{
-      els.generate.textContent='Generate XML';
+      els.generate.textContent='Generate';
       els.generate.disabled=false;
     }
   }
