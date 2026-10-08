@@ -149,3 +149,22 @@ code { color: #a8d8ff; font-family: ui-monospace, SFMono-Regular, Menlo, Consola
 .form-grid input[type="date"] {
   cursor: pointer;
 }
+
+.form-grid select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+  outline: none;
+  cursor: pointer;
+}
+
+.form-grid select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(77, 181, 255, .12);
+}
