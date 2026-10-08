@@ -185,6 +185,53 @@ function updateLoadButton() {
 
   loadButton.disabled = !localStorage.getItem(CONFIG_STORAGE_KEY);
 }
+function calculateCreditorId(country, businessCode, nationalId) {
+  country = country.toUpperCase();
+  businessCode = businessCode.toUpperCase();
+  nationalId = nationalId.toUpperCase();
+
+  // Eliminar caràcters no alfanumèrics de la part nacional
+  nationalId = nationalId.replace(/[^A-Z0-9]/g, '');
+
+  // Per calcular el checksum no s'utilitza el Business Code
+  const checkString = nationalId + country + '00';
+
+  // Convertir lletres A-Z a números 10-35
+  let numericString = '';
+
+  for (const char of checkString) {
+    if (/[A-Z]/.test(char)) {
+      numericString += char.charCodeAt(0) - 55;
+    } else {
+      numericString += char;
+    }
+  }
+
+  // MOD 97-10
+  let remainder = 0;
+
+  for (const digit of numericString) {
+    remainder = (remainder * 10 + Number(digit)) % 97;
+  }
+
+  const checkDigits = String(98 - remainder).padStart(2, '0');
+
+  return country + checkDigits + businessCode + nationalId;
+}
+
+function updateCreditorId() {
+  const country = document.getElementById('creditorCountry').value;
+  const businessCode = document.getElementById('creditorBusinessCode').value;
+  const nationalId = document.getElementById('creditorNationalId').value;
+
+  if (!country || !nationalId) {
+    document.getElementById('creditorScheme').value = '';
+    return;
+  }
+
+  document.getElementById('creditorScheme').value =
+    calculateCreditorId(country, businessCode, nationalId);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   // El DOM ja està pintat/construït
@@ -200,5 +247,18 @@ document.addEventListener('DOMContentLoaded', () => {
     .addEventListener('click', clearConfig);
   
   updateLoadButton();
+
+  const fields = [
+    'creditorCountry',
+    'creditorBusinessCode',
+    'creditorNationalId'
+  ];
+
+  fields.forEach(id => {
+    document.getElementById(id).addEventListener('input', updateCreditorId);
+    document.getElementById(id).addEventListener('change', updateCreditorId);
+  });
+
+  updateCreditorId();
 
 });

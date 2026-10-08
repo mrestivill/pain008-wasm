@@ -62,8 +62,29 @@
         </label>
 
         <label>
+        <span>Country</span>
+        <select id="creditorCountry">
+          <option value="ES">Spain</option>
+          <option value="FR">France</option>
+          <option value="DE">Germany</option>
+          <option value="IT">Italy</option>
+          <option value="PT">Portugal</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Creditor Business Code</span>
+        <input id="creditorBusinessCode" value="ZZZ" maxlength="3">
+      </label>
+
+      <label>
+        <span>National Creditor Identifier</span>
+        <input id="creditorNationalId" value="B123456">
+      </label>
+
+        <label>
           <span>Creditor scheme ID (ICS)</span>
-          <input id="creditorScheme" value="ES98000B123456">
+          <input id="creditorScheme" value="ES98000B123456" readonly>
         </label>
 
         <label>
