@@ -128,3 +128,62 @@ DD-10003,19.95,EUR,MANDATE-1003,2026-10-07,OOFF,2026-10-15,Demo Customer,ES91210
   async function boot(){try{els.status.textContent='Loading Python…';const mod=await import('https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs');pyodide=await mod.loadPyodide({indexURL:PYODIDE_INDEX, args:[]});els.xml.textContent='Instal·lant pain001…';await pyodide.loadPackage('micropip');const micropip=pyodide.pyimport('micropip');await micropip.install('pain001==0.0.72');pyodide.FS.writeFile('/home/pyodide/pain008.py',await (await fetch('python/pain008.py')).text());await pyodide.runPythonAsync("import sys; sys.path.append('/home/pyodide'); import pain008");els.engineBadge.textContent=`Python WASM ${PYODIDE_VERSION} · pain001 ${'0.0.72'} · single-thread`;els.status.textContent='Ready · not validated';els.status.className='status neutral';els.validate.disabled=false;els.generate.disabled=false;els.xml.textContent='Click Validate or Generate XML to run validation.';localSummary(parseCSV(els.csv.value));invalidateValidation('Ready · click Validate to validate, or Generate XML to validate and generate.');}catch(e){showError(e);els.engineBadge.textContent='Python WASM · error';els.xml.textContent='No s’ha pogut carregar Python/pain001. Revisa la consola del navegador.'}}
   els.csv.value=SAMPLE;boot();
 })();
+
+const CONFIG_STORAGE_KEY = 'creditorConfiguration';
+
+const configFields = [
+  'creditorName',
+  'creditorIban',
+  'creditorBic',
+  'creditorScheme',
+  'collectionDate',
+  'initiatorName'
+];
+
+function saveConfig() {
+  const config = {};
+
+  configFields.forEach(id => {
+    config[id] = document.getElementById(id).value;
+  });
+
+  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+}
+
+function loadConfig() {
+  const saved = localStorage.getItem(CONFIG_STORAGE_KEY);
+
+  if (!saved) {
+    return;
+  }
+
+  try {
+    const config = JSON.parse(saved);
+
+    configFields.forEach(id => {
+      const field = document.getElementById(id);
+
+      if (field && config[id] !== undefined) {
+        field.value = config[id];
+      }
+    });
+  } catch (error) {
+    console.error('Error loading configuration:', error);
+  }
+}
+
+function clearConfig() {
+  localStorage.removeItem(CONFIG_STORAGE_KEY);
+  location.reload();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // El DOM ja està pintat/construït
+  loadConfig();
+
+  document.getElementById('saveConfig')
+    .addEventListener('click', saveConfig);
+
+  document.getElementById('clearConfig')
+    .addEventListener('click', clearConfig);
+});
