@@ -148,6 +148,9 @@ function saveConfig() {
   });
 
   localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
+
+  updateLoadButton();
+
 }
 
 function loadConfig() {
@@ -175,6 +178,12 @@ function loadConfig() {
 function clearConfig() {
   localStorage.removeItem(CONFIG_STORAGE_KEY);
   location.reload();
+  updateLoadButton();
+}
+function updateLoadButton() {
+  const loadButton = document.getElementById('loadConfig');
+
+  loadButton.disabled = !localStorage.getItem(CONFIG_STORAGE_KEY);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -189,4 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('clearConfig')
     .addEventListener('click', clearConfig);
+  
+  updateLoadButton();
+
 });
