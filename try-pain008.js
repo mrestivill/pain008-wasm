@@ -126,7 +126,10 @@ const configFields = [
   'creditorBic',
   'creditorScheme',
   'collectionDate',
-  'initiatorName'
+  'initiatorName',
+  'creditorCountry',
+  'creditorBusinessCode',
+  'creditorNationalId'
 ];
 
 function saveConfig() {
