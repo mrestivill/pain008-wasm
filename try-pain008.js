@@ -190,35 +190,23 @@ function calculateCreditorId(country, businessCode, nationalId) {
   businessCode = businessCode.toUpperCase();
   nationalId = nationalId.toUpperCase();
 
-  // Eliminar caràcters no alfanumèrics de la part nacional
+  /function calculateCreditorId(country, businessCode, nationalId) {
+
+  country = country.toUpperCase().trim();
+  businessCode = businessCode.toUpperCase().trim();
+  nationalId = nationalId.toUpperCase().trim();
+
+  // Eliminar caràcters no alfanumèrics
   nationalId = nationalId.replace(/[^A-Z0-9]/g, '');
 
-  // Per calcular el checksum no s'utilitza el Business Code
-  const checkString = nationalId + country + '00';
+  // Creditor ID provisional amb check digits = 00
+  const provisional = country + '00' + businessCode + nationalId;
 
-  // Convertir lletres A-Z a números 10-35
-  let numericString = '';
-
-  for (const char of checkString) {
-    if (/[A-Z]/.test(char)) {
-      numericString += char.charCodeAt(0) - 55;
-    } else {
-      numericString += char;
-    }
-  }
-
-  // MOD 97-10
-  let remainder = 0;
-
-  for (const digit of numericString) {
-    remainder = (remainder * 10 + Number(digit)) % 97;
-  }
-
-  const checkDigits = String(98 - remainder).padStart(2, '0');
-
-  return country + checkDigits + businessCode + nationalId;
+  // sepa.js calcula els check digits MOD 97-10
+  return SEPA.checksumCreditorID(provisional);
 }
 
+ 
 function updateCreditorId() {
   const country = document.getElementById('creditorCountry').value;
   const businessCode = document.getElementById('creditorBusinessCode').value;
