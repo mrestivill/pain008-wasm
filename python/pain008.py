@@ -724,16 +724,25 @@ def generate(payload_json):
 
     rows = _rows_from_payload(payload)
 
-    template = DEFAULT_TEMPLATE_REGISTRY.get_template(
+    schema_template = DEFAULT_TEMPLATE_REGISTRY.get_template(
         MESSAGE_TYPE
     )
 
-    if template is None:
+    if schema_template is None:
         return json.dumps({
             "success": False,
             "violations": [
-                f"La versió {MESSAGE_TYPE} no està registrada."
+                f"No s'ha trobat l'XSD per a {MESSAGE_TYPE}."
             ],
+            "rows": len(rows),
+        })
+
+    try:
+        custom_template_source = _load_custom_template()
+    except Exception as e:
+        return json.dumps({
+            "success": False,
+            "violations": [str(e)],
             "rows": len(rows),
         })
 
@@ -744,7 +753,7 @@ def generate(payload_json):
     except Exception as e:
 
         try:
-            preview = _render_unvalidated_xml(rows, template)
+            preview = _render_unvalidated_xml(rows, schema_template)
         except Exception as render_error:
             preview = ""
             error = (
@@ -763,7 +772,7 @@ def generate(payload_json):
     if not getattr(result, "is_valid", False) or violations:
 
         try:
-            preview = _render_unvalidated_xml(rows, template)
+            preview = _render_unvalidated_xml(rows, schema_template)
         except Exception as render_error:
             preview = ""
             violations.append(

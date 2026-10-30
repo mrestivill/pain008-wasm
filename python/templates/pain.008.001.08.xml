@@ -29,18 +29,18 @@
 
             <ReqdColltnDt>{{group.requested_execution_date}}</ReqdColltnDt>
             <Cdtr>
-                <Nm>{{creditor_name}}</Nm>
+                <Nm>{{group.creditor_name}}</Nm>
             </Cdtr>
             <CdtrAcct>
                 <Id>
-                    <IBAN>{{creditor_account_IBAN}}</IBAN>
+                    <IBAN>{{group.creditor_account_IBAN}}</IBAN>
                 </Id>
             </CdtrAcct>
             <CdtrSchmeId>
                 <Id>
                     <PrvtId>
                         <Othr>
-                            <Id>{{creditor_scheme_id}}</Id>
+                            <Id>{{group.creditor_scheme_id}}</Id>
                             <SchmeNm>
                                 <Prtry>SEPA</Prtry>
                             </SchmeNm>
@@ -48,14 +48,14 @@
                     </PrvtId>
                 </Id>
             </CdtrSchmeId>
-            {% if creditor_agent_BIC %}
+            {% if group.creditor_agent_BIC %}
             <CdtrAgt>
                 <FinInstnId>
-                    <BICFI>{{creditor_agent_BIC}}</BICFI>
+                    <BICFI>{{group.creditor_agent_BIC}}</BICFI>
                 </FinInstnId>
             </CdtrAgt>
             {% endif %}
-            <ChrgBr>{{charge_bearer}}</ChrgBr>
+            <ChrgBr>{{group.charge_bearer}}</ChrgBr>
             {% for tx in group.transactions %}
             <DrctDbtTxInf>
                 <PmtId>
