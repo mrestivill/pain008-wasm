@@ -36,6 +36,14 @@
                     <IBAN>{{group.creditor_account_IBAN}}</IBAN>
                 </Id>
             </CdtrAcct>
+            {% if group.creditor_agent_BIC %}
+            <CdtrAgt>
+                <FinInstnId>
+                    <BICFI>{{group.creditor_agent_BIC}}</BICFI>
+                </FinInstnId>
+            </CdtrAgt>
+            {% endif %}
+            <ChrgBr>{{group.charge_bearer}}</ChrgBr>
             <CdtrSchmeId>
                 <Id>
                     <PrvtId>
@@ -48,14 +56,6 @@
                     </PrvtId>
                 </Id>
             </CdtrSchmeId>
-            {% if group.creditor_agent_BIC %}
-            <CdtrAgt>
-                <FinInstnId>
-                    <BICFI>{{group.creditor_agent_BIC}}</BICFI>
-                </FinInstnId>
-            </CdtrAgt>
-            {% endif %}
-            <ChrgBr>{{group.charge_bearer}}</ChrgBr>
             {% for tx in group.transactions %}
             <DrctDbtTxInf>
                 <PmtId>
