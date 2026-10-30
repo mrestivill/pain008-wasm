@@ -12,19 +12,22 @@
                 <Nm>{{initiator_name}}</Nm>
             </InitgPty>
         </GrpHdr>
+        {% for group in payment_groups %}
         <PmtInf>
-            <PmtInfId>{{payment_information_id}}</PmtInfId>
-            <PmtMtd>{{payment_method}}</PmtMtd>
-            <BtchBookg>{{batch_booking}}</BtchBookg>
-            <NbOfTxs>{{nb_of_txs}}</NbOfTxs>
-            <CtrlSum>{{ctrl_sum}}</CtrlSum>
+            <PmtInfId>{{group.payment_information_id}}</PmtInfId>
+            <PmtMtd>{{group.payment_method}}</PmtMtd>
+            <BtchBookg>{{group.batch_booking}}</BtchBookg>
+            <NbOfTxs>{{group.nb_of_txs}}</NbOfTxs>
+            <CtrlSum>{{group.ctrl_sum}}</CtrlSum>
+
             <PmtTpInf>
                 <SvcLvl>
-                    <Cd>{{service_level_code}}</Cd>
+                    <Cd>{{group.service_level_code}}</Cd>
                 </SvcLvl>
-                <SeqTp>{{sequence_type}}</SeqTp>
+                <SeqTp>{{group.sequence_type}}</SeqTp>
             </PmtTpInf>
-            <ReqdColltnDt>{{requested_execution_date}}</ReqdColltnDt>
+
+            <ReqdColltnDt>{{group.requested_execution_date}}</ReqdColltnDt>
             <Cdtr>
                 <Nm>{{creditor_name}}</Nm>
             </Cdtr>
@@ -53,7 +56,7 @@
             </CdtrAgt>
             {% endif %}
             <ChrgBr>{{charge_bearer}}</ChrgBr>
-            {% for tx in transactions %}
+            {% for tx in group.transactions %}
             <DrctDbtTxInf>
                 <PmtId>
                     <EndToEndId>{{tx.payment_id}}</EndToEndId>
@@ -88,6 +91,7 @@
             </DrctDbtTxInf>
             {% endfor %}
         </PmtInf>
+        {% endfor %}
     </CstmrDrctDbtInitn>
 </Document>
 
