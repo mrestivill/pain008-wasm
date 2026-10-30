@@ -36,13 +36,18 @@
                     <IBAN>{{group.creditor_account_IBAN}}</IBAN>
                 </Id>
             </CdtrAcct>
-            {% if group.creditor_agent_BIC %}
+            
             <CdtrAgt>
                 <FinInstnId>
+                    {% if group.creditor_agent_BIC %}
                     <BICFI>{{group.creditor_agent_BIC}}</BICFI>
+                    {% else %}
+                    <Othr>
+                        <Id>NOTPROVIDED</Id>
+                    </Othr>
+                    {% endif %}
                 </FinInstnId>
             </CdtrAgt>
-            {% endif %}
             <ChrgBr>{{group.charge_bearer}}</ChrgBr>
             <CdtrSchmeId>
                 <Id>
@@ -68,13 +73,17 @@
                         <DtOfSgntr>{{tx.date_of_signature}}</DtOfSgntr>
                     </MndtRltdInf>
                 </DrctDbtTx>
-                 {% if tx.debtor_agent_BIC %}
                 <DbtrAgt>
                     <FinInstnId>
+                        {% if tx.debtor_agent_BIC %}
                         <BICFI>{{tx.debtor_agent_BIC}}</BICFI>
+                        {% else %}
+                        <Othr>
+                            <Id>NOTPROVIDED</Id>
+                        </Othr>
+                        {% endif %}
                     </FinInstnId>
                 </DbtrAgt>
-                {% endif %}
                 <Dbtr>
                     <Nm>{{tx.debtor_name}}</Nm>
                 </Dbtr>
